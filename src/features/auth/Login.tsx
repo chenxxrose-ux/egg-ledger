@@ -1,0 +1,72 @@
+import { useState } from 'react'
+import { supabase } from '../data/supabase'
+import { ErrorNote, useSubmit } from '../../ui/kit'
+import { AppError } from '../data/errors'
+
+export function Login() {
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem('egg-ledger-email') ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const [password, setPassword] = useState('')
+  const { busy, error, submit } = useSubmit()
+
+  async function login() {
+    await submit(async () => {
+      const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (err) {
+        if (/invalid login credentials/i.test(err.message)) throw new AppError('帳號或密碼不正確', 'validation')
+        throw err
+      }
+      try {
+        localStorage.setItem('egg-ledger-email', email.trim())
+      } catch {
+        /* 忽略 */
+      }
+    })
+  }
+
+  return (
+    <main className="login">
+      <h1>叫蛋記帳</h1>
+      <p className="note">阿寶、草莓各自用自己的帳號登入，看到的是同一本帳。</p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void login()
+        }}
+      >
+        <label className="field">
+          <span>Email</span>
+          <input
+            className="input"
+            type="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </label>
+        <label className="field">
+          <span>密碼</span>
+          <input
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </label>
+        <ErrorNote error={error} />
+        <button className="btn primary block" type="submit" disabled={busy || !email || !password}>
+          {busy ? '登入中…' : '登入'}
+        </button>
+      </form>
+    </main>
+  )
+}
