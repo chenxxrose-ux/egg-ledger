@@ -58,11 +58,12 @@ test.afterAll(async () => {
   await berryCtx?.close()
 })
 
-test('Face ID 登入選項：登入頁有按鈕，詢問只出現一次，帳號選單可設定與登出', async ({ browser }) => {
+test('Face ID 登入選項：沒設定過不顯示按鈕，詢問只出現一次，帳號選單可設定與登出', async ({ browser }) => {
   const ctx = await browser.newContext()
   const page = await ctx.newPage()
   await page.goto('/')
-  await expect(page.getByRole('button', { name: '用 Face ID 登入' })).toBeVisible()
+  await expect(page.getByLabel('Email')).toBeVisible()
+  await expect(page.getByRole('button', { name: '用 Face ID 登入' })).toHaveCount(0)
   await page.getByLabel('Email').fill('bao@test.local')
   await page.getByLabel('密碼').fill('test-password')
   await page.getByRole('button', { name: '登入', exact: true }).click()
@@ -76,6 +77,10 @@ test('Face ID 登入選項：登入頁有按鈕，詢問只出現一次，帳號
   const menu = page.getByRole('dialog', { name: /目前登入/ })
   await expect(menu.getByRole('button', { name: '設定 Face ID 登入' })).toBeVisible()
   await menu.getByRole('button', { name: '登出' }).click()
+  await expect(page.getByLabel('Email')).toBeVisible()
+  // 這支手機設定過 Face ID 後，登入頁才出現按鈕
+  await page.evaluate(() => localStorage.setItem('egg-ledger-passkey', '1'))
+  await page.reload()
   await expect(page.getByRole('button', { name: '用 Face ID 登入' })).toBeVisible()
   await ctx.close()
 })
