@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../data/supabase'
 import { ErrorNote, useSubmit } from '../../ui/kit'
 import { AppError } from '../data/errors'
-import { markOfferPasskey, passkeySupported, signInWithFaceId } from './passkey'
+import { deviceHasPasskey, markOfferPasskey, passkeySupported, signInWithFaceId } from './passkey'
 
 export function Login() {
   const [email, setEmail] = useState(() => {
@@ -15,6 +15,8 @@ export function Login() {
   const [password, setPassword] = useState('')
   const { busy, error, submit } = useSubmit()
   const faceId = useSubmit()
+  // 只有這支手機設定過 Face ID 才顯示按鈕；沒設定過的先用密碼登入，登入後會詢問要不要設定
+  const [showFaceId] = useState(() => passkeySupported() && deviceHasPasskey())
 
   async function login() {
     await submit(async () => {
@@ -36,7 +38,7 @@ export function Login() {
     <main className="login">
       <h1>叫蛋記帳</h1>
       <p className="note">阿寶、草莓各自用自己的帳號登入，看到的是同一本帳。</p>
-      {passkeySupported() && (
+      {showFaceId && (
         <>
           <button
             type="button"
@@ -80,7 +82,7 @@ export function Login() {
           />
         </label>
         <ErrorNote error={error} />
-        <button className={`btn ${passkeySupported() ? 'secondary' : 'primary'} block`} type="submit" disabled={busy || !email || !password}>
+        <button className={`btn ${showFaceId ? 'secondary' : 'primary'} block`} type="submit" disabled={busy || !email || !password}>
           {busy ? '登入中…' : '登入'}
         </button>
       </form>

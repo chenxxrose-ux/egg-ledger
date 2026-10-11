@@ -185,7 +185,7 @@ describe('每月統計', () => {
       [sale('2026-10-01', 'income', 3000), sale('2026-10-02', 'rest', null), sale('2026-09-30', 'income', 999)], TODAY)
     expect(s).toMatchObject({
       boxes: 2, knownCost: 1700, unpricedCount: 0, income: 3000, diff: 1300, paidToVendor: 850,
-      recordedDays: 2, restDays: 1, elapsedDays: 12, missingDays: 10, future: { count: 1, boxes: 1 },
+      recordedDays: 2, restDays: 1, fixedRestDays: 2, elapsedDays: 12, missingDays: 8, future: { count: 1, boxes: 1 },
     })
   })
 
@@ -198,6 +198,13 @@ describe('每月統計', () => {
 
   test('過去月份以整月計算未記錄天數', () => {
     const s = monthStats('2026-09', [], [], [], [], TODAY)
-    expect(s.missingDays).toBe(30)
+    // 2026 年 9 月有 4 個星期一（7、14、21、28 日）固定休息
+    expect(s.fixedRestDays).toBe(4)
+    expect(s.missingDays).toBe(26)
+  })
+
+  test('星期一有登記就照登記算，不當固定休息', () => {
+    const s = monthStats('2026-10', [], [], [], [sale('2026-10-05', 'income', 500)], TODAY)
+    expect(s).toMatchObject({ income: 500, recordedDays: 1, fixedRestDays: 1, missingDays: 10 })
   })
 })
