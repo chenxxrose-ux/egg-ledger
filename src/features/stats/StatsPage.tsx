@@ -92,6 +92,12 @@ export function StatsPage({
                 {s.recordedDays} 天{s.restDays > 0 && `（含休息 ${s.restDays} 天）`}
               </span>
             </div>
+            {s.fixedRestDays > 0 && (
+              <div className="kv">
+                <span>週一固定休息</span>
+                <span className="v">{s.fixedRestDays} 天</span>
+              </div>
+            )}
             <div className="kv">
               <span>尚未記錄</span>
               <span className={`v${s.missingDays > 0 ? ' amber' : ''}`}>{s.missingDays} 天</span>

@@ -29,6 +29,8 @@ async function login(browser: Browser, email: string) {
   return { ctx, page }
 }
 
+const weekdayOf = (d: string) => { const { y, m, d: dd } = parseYmd(d); return new Date(Date.UTC(y, m - 1, dd)).getUTCDay() }
+
 async function sql<T = Record<string, unknown>>(query: string, params: unknown[] = []): Promise<T[]> {
   const r = await fetch(`${MOCK}/__test/sql`, { method: 'POST', body: JSON.stringify({ sql: query, params }) })
   return r.json()
@@ -191,6 +193,8 @@ test('付清後顯示付清日期與付款人，可以復原', async () => {
 
 test('多筆結帳：部分付款按送蛋日期由舊到新分配，付款前顯示分配結果', async () => {
   await addOrder(bao, { ordered: prevMonthDay1, delivery: prevMonthDay1, boxes: 1, price: 900 })
+  // 等新紀錄出現在列表再開多筆結帳（多筆結帳的預設勾選是打開當下決定的）
+  await expect(card(bao, prevMonthDay1, 1)).toBeVisible()
   await bao.getByRole('button', { name: '多筆結帳' }).click()
   const sheet = bao.getByRole('dialog', { name: '多筆結帳' })
   // 預訂（價格未知）不能勾
@@ -315,6 +319,15 @@ test('離線時提示且不能儲存', async () => {
 
 test('賣蛋：按顆數登記、再次儲存是修改不累加、未來日期不能登記', async () => {
   await berry.getByRole('navigation').getByRole('button', { name: '賣蛋', exact: true }).click()
+  // 「今天休息」打開登記並預選休息（星期一固定休息，不顯示這個按鈕）
+  if (weekdayOf(today) !== 1) {
+    await berry.getByRole('button', { name: '今天休息' }).click()
+    const rest = berry.getByRole('dialog', { name: `登記 ${formatDay(today, today)}` })
+    await expect(rest.getByRole('button', { name: '休息' })).toHaveAttribute('aria-pressed', 'true')
+    await rest.getByRole('button', { name: '關閉' }).click()
+  } else {
+    await expect(berry.getByLabel('今天')).toContainText('週一固定休息')
+  }
   await berry.getByRole('button', { name: '登記當日賣出' }).click()
   let sheet = berry.getByRole('dialog', { name: `登記 ${formatDay(today, today)}` })
   await sheet.getByRole('button', { name: '填顆數' }).click()

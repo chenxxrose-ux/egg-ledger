@@ -1,6 +1,6 @@
 // 帳務計算：純函式，不碰 UI 或資料庫。
 import type { Allocation, DailySale, EggOrder, Payment } from './types'
-import { daysInMonth, formatDay, formatMonth, monthOf, parseYmd, ymd } from './dates'
+import { daysInMonth, formatDay, formatMonth, monthOf, parseYmd, weekday, ymd } from './dates'
 
 export type OrderStatus = 'unpriced' | 'unpaid' | 'partial' | 'paid' | 'overpaid'
 
@@ -182,7 +182,9 @@ export type MonthStats = {
   paidToVendor: number
   recordedDays: number
   restDays: number
-  /** 已過去（含今天）但沒登記的天數 */
+  /** 已過去（含今天）、沒登記的星期一（固定休息） */
+  fixedRestDays: number
+  /** 已過去（含今天）但沒登記的天數，不含固定休息的星期一 */
   missingDays: number
   elapsedDays: number
   future: { count: number; boxes: number }
@@ -212,6 +214,10 @@ export function monthStats(
 
   const elapsedDays = elapsedDaysInMonth(month, today)
   const recordedInElapsed = monthSales.filter((s) => s.sale_date <= today).length
+  const recordedDates = new Set(monthSales.map((s) => s.sale_date))
+  const fixedRestDays = monthDays(month)
+    .slice(0, elapsedDays)
+    .filter((d) => isFixedRestDay(d) && !recordedDates.has(d)).length
 
   return {
     month,
@@ -223,7 +229,8 @@ export function monthStats(
     paidToVendor,
     recordedDays: monthSales.length,
     restDays: monthSales.filter((s) => s.mode === 'rest').length,
-    missingDays: Math.max(elapsedDays - recordedInElapsed, 0),
+    fixedRestDays,
+    missingDays: Math.max(elapsedDays - recordedInElapsed - fixedRestDays, 0),
     elapsedDays,
     future: { count: future.length, boxes: future.reduce((s, v) => s + v.order.boxes, 0) },
   }
@@ -234,6 +241,11 @@ export function elapsedDaysInMonth(month: string, today: string): number {
   if (month > tm) return 0
   if (month < tm) return daysInMonth(month)
   return parseYmd(today).d
+}
+
+/** 每週一固定休息。那天沒登記就當休息；真的有賣，照常登記即可，登記的紀錄優先 */
+export function isFixedRestDay(d: string): boolean {
+  return weekday(d) === '一'
 }
 
 export function monthDays(month: string): string[] {

@@ -3,7 +3,7 @@ import { useLedger } from '../data/store'
 import { Choice, ErrorNote, Sheet, useSubmit, useToast } from '../../ui/kit'
 import { formatDay, formatMonth, monthOf, parseYmd, shiftMonth, weekday } from '../../lib/dates'
 import { formatMoney, parseAmount } from '../../lib/money'
-import { monthDays, saleIncome } from '../../lib/ledger'
+import { isFixedRestDay, monthDays, saleIncome } from '../../lib/ledger'
 import type { DailySale, SaleMode } from '../../lib/types'
 
 const WD = ['日', '一', '二', '三', '四', '五', '六']
@@ -13,6 +13,7 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
   const { data, today, online, actions } = useLedger()
   const toast = useToast()
   const [editing, setEditing] = useState<string | null>(null) // 日期
+  const [restMode, setRestMode] = useState(false) // 按「今天休息」打開時預選休息
   const [priceOpen, setPriceOpen] = useState(false)
 
   const byDate = useMemo(() => new Map(data.sales.map((s) => [s.sale_date, s])), [data.sales])
@@ -27,7 +28,13 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
       <section className="summary" aria-label="今天">
         <div className="label">今天 {formatDay(today, today)}</div>
         <div className="big" style={{ fontSize: 26 }}>
-          {todaySale ? (todaySale.mode === 'rest' ? '休息' : formatMoney(saleIncome(todaySale))) : '還沒登記'}
+          {todaySale
+            ? todaySale.mode === 'rest'
+              ? '休息'
+              : formatMoney(saleIncome(todaySale))
+            : isFixedRestDay(today)
+              ? '週一固定休息'
+              : '還沒登記'}
         </div>
         {todaySale?.mode === 'count' && (
           <div className="chips">
@@ -40,6 +47,19 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
       <button type="button" className="btn primary block" style={{ marginTop: 12 }} onClick={() => setEditing(today)}>
         {todaySale ? '修改今天的紀錄' : '登記當日賣出'}
       </button>
+      {!todaySale && !isFixedRestDay(today) && (
+        <button
+          type="button"
+          className="btn secondary block"
+          style={{ marginTop: 8 }}
+          onClick={() => {
+            setRestMode(true)
+            setEditing(today)
+          }}
+        >
+          今天休息
+        </button>
+      )}
 
       <div className="month-nav">
         <button type="button" aria-label="上個月" onClick={() => setMonth(shiftMonth(month, -1))}>
@@ -51,7 +71,7 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
         </button>
       </div>
       <p className="note" style={{ marginTop: 0 }}>
-        本月已登記收入 {formatMoney(monthIncome)}。點日期可以補登或修改，琥珀色是還沒記錄的日子。
+        本月已登記收入 {formatMoney(monthIncome)}。點日期可以補登或修改，琥珀色是還沒記錄的日子。星期一固定休息，有賣的話點日期登記即可；其他天要休息，點日期選「休息」。
       </p>
       <div className="cal" role="grid" aria-label={`${formatMonth(month)}日期表`}>
         {WD.map((w) => (
@@ -65,7 +85,8 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
         {days.map((d) => {
           const s = byDate.get(d)
           const future = d > today
-          const cls = [s?.mode === 'rest' ? 'rest' : '', !s && !future ? 'missing' : '', d === today ? 'today' : '']
+          const fixedRest = !s && isFixedRestDay(d)
+          const cls = [s?.mode === 'rest' || fixedRest ? 'rest' : '', !s && !future && !fixedRest ? 'missing' : '', d === today ? 'today' : '']
             .filter(Boolean)
             .join(' ')
           return (
@@ -75,10 +96,10 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
               className={cls}
               disabled={future}
               onClick={() => setEditing(d)}
-              aria-label={`${formatDay(d, today)}${s ? (s.mode === 'rest' ? ' 休息' : ` 收入 ${saleIncome(s)} 元`) : future ? '' : ' 未記錄'}`}
+              aria-label={`${formatDay(d, today)}${s ? (s.mode === 'rest' ? ' 休息' : ` 收入 ${saleIncome(s)} 元`) : fixedRest ? ' 固定休息' : future ? '' : ' 未記錄'}`}
             >
               <span className="d">{parseYmd(d).d}</span>
-              <span className="s">{s ? (s.mode === 'rest' ? '休' : saleIncome(s).toLocaleString('en-US')) : ''}</span>
+              <span className="s">{s ? (s.mode === 'rest' ? '休' : saleIncome(s).toLocaleString('en-US')) : fixedRest ? '休' : ''}</span>
             </button>
           )
         })}
@@ -97,7 +118,17 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
         <p className="note">改價只影響之後的登記，已登記的紀錄保留當時的售價。</p>
       </section>
 
-      {editing && <SaleForm date={editing} existing={byDate.get(editing) ?? null} onClose={() => setEditing(null)} />}
+      {editing && (
+        <SaleForm
+          date={editing}
+          existing={byDate.get(editing) ?? null}
+          initialMode={restMode ? 'rest' : undefined}
+          onClose={() => {
+            setEditing(null)
+            setRestMode(false)
+          }}
+        />
+      )}
       {priceOpen && (
         <UnitPriceForm
           current={data.ledger.egg_unit_price}
@@ -112,13 +143,23 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
   )
 }
 
-function SaleForm({ date, existing: live, onClose }: { date: string; existing: DailySale | null; onClose: () => void }) {
+function SaleForm({
+  date,
+  existing: live,
+  initialMode,
+  onClose,
+}: {
+  date: string
+  existing: DailySale | null
+  initialMode?: SaleMode
+  onClose: () => void
+}) {
   const { data, today, online, actions } = useLedger()
   // 以打開表單當下的紀錄為準；對方先存過會出現衝突提示，再按一次儲存才會覆蓋
   const [existing, setExisting] = useState(live)
   const toast = useToast()
   const [saleDate, setSaleDate] = useState(date)
-  const [mode, setMode] = useState<SaleMode>(existing?.mode ?? 'income')
+  const [mode, setMode] = useState<SaleMode>(existing?.mode ?? initialMode ?? 'income')
   const [incomeText, setIncomeText] = useState(existing?.mode === 'income' ? String(existing.income) : '')
   const [countText, setCountText] = useState(existing?.egg_count != null ? String(existing.egg_count) : '')
   const [priceText, setPriceText] = useState(String(existing?.unit_price ?? data.ledger.egg_unit_price))
