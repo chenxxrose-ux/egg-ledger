@@ -110,7 +110,16 @@ function PaymentEditor({ payment, onClose }: { payment: Payment; onClose: () => 
           const o = orderOf(a)
           return (
             <label key={a.id} className="checkrow">
-              <span className="grow">{o ? `${formatDay(o.delivery_on, today)} ${o.boxes} 箱` : '叫蛋'}</span>
+              <span className="grow">
+                {o ? (
+                  <>
+                    <span className="d-col">{formatDay(o.delivery_on, today)}</span>
+                    {o.boxes} 箱
+                  </>
+                ) : (
+                  '叫蛋'
+                )}
+              </span>
               <input
                 className="input"
                 style={{ width: 130, minHeight: 44, height: 44 }}

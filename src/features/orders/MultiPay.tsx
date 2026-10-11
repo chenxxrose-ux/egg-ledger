@@ -105,7 +105,8 @@ export function MultiPay({ views, onClose }: { views: OrderView[]; onClose: () =
                     onChange={() => toggle(v.order.id)}
                   />
                   <span className="grow">
-                    {formatDay(v.order.delivery_on, today)} {v.order.boxes} 箱{v.isFuture && <span className="tag booking"> 預訂</span>}
+                    <span className="d-col">{formatDay(v.order.delivery_on, today)}</span>
+                    {v.order.boxes} 箱{v.isFuture && <span className="tag booking">預訂</span>}
                   </span>
                   <span>{v.owed == null ? <span style={{ color: 'var(--amber)' }}>待補價格</span> : `欠 ${formatMoney(v.owed)}`}</span>
                 </label>
@@ -172,7 +173,8 @@ function AllocationPreview({ plan, today }: { plan: ReturnType<typeof planAlloca
       {plan.items.map((i) => (
         <div className="kv" key={i.view.order.id}>
           <span>
-            {formatDay(i.view.order.delivery_on, today)} {i.view.order.boxes} 箱
+            <span className="d-col">{formatDay(i.view.order.delivery_on, today)}</span>
+            {i.view.order.boxes} 箱
           </span>
           <span className="v">
             {i.amount > 0 ? `付 ${i.amount.toLocaleString('en-US')}` : '這次不付'}
