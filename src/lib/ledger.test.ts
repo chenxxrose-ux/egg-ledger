@@ -144,13 +144,13 @@ describe('對帳文字', () => {
     expect(reconcileText(views, { type: 'unsettled' }, TODAY)).toBe(
       [
         '叫蛋對帳（未結清）',
-        '10/8（四） 2 箱 共 1,700 元',
-        '10/10（六） 1 箱 共 850 元｜已付 500 元，尚欠 350 元',
-        '10/13（二） 預訂 1 箱 價格待確認',
-        '—',
-        '總箱數：4 箱',
-        '已知未付合計：2,050 元',
-        '待補價格：1 筆',
+        '',
+        '・10/8（四） 2 箱，1,700 元',
+        '・10/10（六） 1 箱，850 元（已付 500，尚欠 350）',
+        '・10/13（二）預訂 1 箱，價格待確認',
+        '',
+        '共 4 箱，已知未付 2,050 元',
+        '另有 1 筆價格待確認',
       ].join('\n'),
     )
   })
@@ -160,9 +160,9 @@ describe('對帳文字', () => {
     const b = order({ delivery_on: '2026-01-02', ordered_on: '2025-12-31' })
     const views = buildOrderViews([a, b], [payment('p1', '2026-01-03')], [alloc('p1', a.id, 850)], TODAY)
     expect(reconcileText(views, { type: 'month', month: '2025-12' }, TODAY)).toBe(
-      ['叫蛋對帳（2025 年 12 月，依送蛋日期）', '2025/12/30（二） 1 箱 共 850 元｜已付清', '—', '總箱數：1 箱', '已知未付合計：0 元', '待補價格：0 筆'].join('\n'),
+      ['叫蛋對帳（2025 年 12 月，依送蛋日期）', '', '・2025/12/30（二） 1 箱，850 元（已付清）', '', '共 1 箱，已知未付 0 元'].join('\n'),
     )
-    expect(reconcileText(views, { type: 'month', month: '2026-01' }, TODAY)).toContain('1/2（五） 1 箱 共 850 元')
+    expect(reconcileText(views, { type: 'month', month: '2026-01' }, TODAY)).toContain('・1/2（五） 1 箱，850 元')
   })
 
   test('不含下單用語', () => {

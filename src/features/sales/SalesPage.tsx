@@ -71,7 +71,7 @@ export function SalesPage({ month, setMonth }: { month: string; setMonth: (m: st
         </button>
       </div>
       <p className="note" style={{ marginTop: 0 }}>
-        本月已登記收入 {formatMoney(monthIncome)}。點日期可以補登或修改，琥珀色是還沒記錄的日子。星期一固定休息，有賣的話點日期登記即可；其他天要休息，點日期選「休息」。
+        本月已登記收入 {formatMoney(monthIncome)}。點日期可補登、修改或改成休息；琥珀色是還沒記錄的日子，星期一固定休息。
       </p>
       <div className="cal" role="grid" aria-label={`${formatMonth(month)}日期表`}>
         {WD.map((w) => (

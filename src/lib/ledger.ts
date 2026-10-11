@@ -129,36 +129,71 @@ export type ReconcileScope = { type: 'unsettled' } | { type: 'month'; month: str
 
 const n = (x: number) => x.toLocaleString('en-US')
 
-export function reconcileText(views: OrderView[], scope: ReconcileScope, today: string): string {
-  const rows = views
+export type ReconcileRow = {
+  id: string
+  /** 10/8（四） */
+  date: string
+  isFuture: boolean
+  boxes: number
+  /** null = 價格待確認 */
+  total: number | null
+  /** 付款狀況補充，例如「已付 500，尚欠 350」；一般未付為 null */
+  note: string | null
+}
+
+export type Reconciliation = {
+  title: string
+  rows: ReconcileRow[]
+  boxes: number
+  knownUnpaid: number
+  unpriced: number
+  emptyText: string
+}
+
+export function reconcile(views: OrderView[], scope: ReconcileScope, today: string): Reconciliation {
+  const list = views
     .filter((v) => (scope.type === 'unsettled' ? !v.settled : monthOf(v.order.delivery_on) === scope.month))
     .sort(compareByDeliveryAsc)
-  const title = scope.type === 'unsettled' ? '叫蛋對帳（未結清）' : `叫蛋對帳（${formatMonth(scope.month)}，依送蛋日期）`
-  if (rows.length === 0) {
-    return `${title}\n目前沒有${scope.type === 'unsettled' ? '未結清' : '這個月'}的叫蛋紀錄。`
-  }
-  const lines = [title]
-  for (const v of rows) {
-    const date = formatDay(v.order.delivery_on, today) + (v.isFuture ? ' 預訂' : '')
-    let line = `${date} ${v.order.boxes} 箱 `
-    if (v.total == null) {
-      line += '價格待確認'
-      if (v.paid > 0) line += `｜已付 ${n(v.paid)} 元`
-    } else {
-      line += `共 ${n(v.total)} 元`
-      if (v.status === 'partial') line += `｜已付 ${n(v.paid)} 元，尚欠 ${n(v.owed!)} 元`
-      else if (v.status === 'paid') line += '｜已付清'
-      else if (v.status === 'overpaid') line += `｜已付 ${n(v.paid)} 元，多付 ${n(v.overpaid)} 元`
+  const rows: ReconcileRow[] = list.map((v) => {
+    let note: string | null = null
+    if (v.total == null) note = v.paid > 0 ? `已付 ${n(v.paid)}` : null
+    else if (v.status === 'partial') note = `已付 ${n(v.paid)}，尚欠 ${n(v.owed!)}`
+    else if (v.status === 'paid') note = '已付清'
+    else if (v.status === 'overpaid') note = `已付 ${n(v.paid)}，多付 ${n(v.overpaid)}`
+    return {
+      id: v.order.id,
+      date: formatDay(v.order.delivery_on, today),
+      isFuture: v.isFuture,
+      boxes: v.order.boxes,
+      total: v.total,
+      note,
     }
-    lines.push(line)
+  })
+  return {
+    title: scope.type === 'unsettled' ? '叫蛋對帳（未結清）' : `叫蛋對帳（${formatMonth(scope.month)}，依送蛋日期）`,
+    rows,
+    boxes: list.reduce((s, v) => s + v.order.boxes, 0),
+    knownUnpaid: list.filter((v) => !v.settled).reduce((s, v) => s + (v.owed ?? 0), 0),
+    unpriced: list.filter((v) => v.total == null).length,
+    emptyText: `目前沒有${scope.type === 'unsettled' ? '未結清' : '這個月'}的叫蛋紀錄。`,
   }
-  const boxes = rows.reduce((s, v) => s + v.order.boxes, 0)
-  const knownUnpaid = rows.filter((v) => !v.settled).reduce((s, v) => s + (v.owed ?? 0), 0)
-  const unpriced = rows.filter((v) => v.total == null).length
-  lines.push('—')
-  lines.push(`總箱數：${n(boxes)} 箱`)
-  lines.push(`已知未付合計：${n(knownUnpaid)} 元`)
-  lines.push(`待補價格：${unpriced} 筆`)
+}
+
+/**
+ * 複製給廠商的純文字。聊天軟體用比例字型，空白對不齊欄位，
+ * 所以用條列一行一筆，不靠空白排版。
+ */
+export function reconcileText(views: OrderView[], scope: ReconcileScope, today: string): string {
+  const r = reconcile(views, scope, today)
+  if (r.rows.length === 0) return `${r.title}\n${r.emptyText}`
+  const lines = [r.title, '']
+  for (const row of r.rows) {
+    const amount = row.total == null ? '價格待確認' : `${n(row.total)} 元`
+    lines.push(`・${row.date}${row.isFuture ? '預訂' : ''} ${row.boxes} 箱，${amount}${row.note ? `（${row.note}）` : ''}`)
+  }
+  lines.push('')
+  lines.push(`共 ${n(r.boxes)} 箱，已知未付 ${n(r.knownUnpaid)} 元`)
+  if (r.unpriced > 0) lines.push(`另有 ${r.unpriced} 筆價格待確認`)
   return lines.join('\n')
 }
 

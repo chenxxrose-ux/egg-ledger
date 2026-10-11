@@ -57,13 +57,13 @@ export function OrderRow({
         <button type="button" className="chip-btn date" onClick={onEdit} aria-label="修改送蛋日期">
           {formatDay(o.delivery_on, today)}
         </button>
-        {view.isFuture && <span className="tag booking">預訂</span>}
         <button type="button" className="chip-btn" onClick={onEdit} aria-label="修改箱數">
           {o.boxes} 箱
         </button>
         <button type="button" className="chip-btn person" onClick={onEdit} aria-label="修改叫蛋人">
           {name(o.ordered_by)}叫
         </button>
+        {view.isFuture && <span className="tag booking">預訂</span>}
       </div>
 
       <div className="money-row">

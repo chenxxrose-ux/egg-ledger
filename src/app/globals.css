@@ -28,7 +28,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--cream); }
-body { min-height: 100dvh; font-size: 16px; line-height: 1.45; overscroll-behavior-y: none; }
+body { min-height: 100dvh; font-size: 16px; line-height: 1.45; overscroll-behavior-y: none; font-variant-numeric: tabular-nums; }
 button, input, select, textarea { font: inherit; color: inherit; }
 /* iPhone：輸入字體 16px 以上才不會自動放大 */
 input, select, textarea { font-size: 16px; }
@@ -105,7 +105,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   font-size: 16px; color: var(--ink);
 }
 .chip-btn:active { background: var(--cream-2); }
-.chip-btn.date { font-weight: 700; font-size: 17px; padding-left: 0; }
+.chip-btn.date { font-weight: 700; font-size: 17px; padding-left: 0; min-width: 6.4em; text-align: left; }
+/* 日期欄固定寬度：9/28（一）和 10/13（二）後面的箱數對齊 */
+.d-col { display: inline-block; min-width: 6.6em; }
+.checkrow .tag, .kv .tag { margin-left: 6px; }
 .chip-btn.person { color: var(--muted); }
 .tag { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 6px; }
 .tag.booking { background: var(--navy-soft); color: var(--navy); }
@@ -209,6 +212,23 @@ input[type='date'].input, input[type='month'].input { -webkit-appearance: none; 
 .checkrow .grow { flex: 1; }
 .checkrow.disabled { color: var(--muted); }
 
+.recon-card { margin-top: 12px; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.recon-card h3 { margin: 0 0 10px; font-size: 17px; }
+.recon-table { display: grid; grid-template-columns: 1fr auto auto; font-variant-numeric: tabular-nums; }
+.recon-table .num { padding-left: 16px !important; }
+.recon-head, .recon-row { display: contents; }
+.recon-head span { font-size: 13px; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.recon-row > span { padding: 10px 0 0; }
+.recon-row > span:not(.recon-note) { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.recon-row:has(.recon-note) > span:not(.recon-note) { border-bottom: 0; padding-bottom: 2px; }
+.recon-note { grid-column: 1 / -1; font-size: 14px; color: var(--muted); padding: 0 0 10px !important; border-bottom: 1px solid var(--line); }
+.recon-table .num { text-align: right; white-space: nowrap; }
+.recon-table .amber, .recon-sum .amber { color: var(--amber); font-weight: 700; }
+.recon-table .tag { margin-left: 6px; }
+.recon-sum { margin-top: 10px; }
+.recon-sum strong.v { font-size: 18px; }
+.recon-raw { margin-top: 12px; }
+.recon-raw summary { min-height: var(--tap); display: flex; align-items: center; color: var(--muted); font-size: 15px; cursor: pointer; }
 .recon { width: 100%; min-height: 220px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); padding: 12px; font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
 
 .toast {
