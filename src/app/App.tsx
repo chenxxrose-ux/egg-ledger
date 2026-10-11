@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { configured, supabase } from '../features/data/supabase'
 import { LedgerProvider, useStore } from '../features/data/store'
 import { Login } from '../features/auth/Login'
+import { AccountSheet } from '../features/auth/AccountSheet'
+import { takeOfferPasskey } from '../features/auth/passkey'
 import { OrdersPage } from '../features/orders/OrdersPage'
 import { SalesPage } from '../features/sales/SalesPage'
 import { StatsPage } from '../features/stats/StatsPage'
@@ -55,6 +57,7 @@ function Shell() {
   const { state, online, actions } = useStore()
   const [tab, setTabState] = useState<Tab>(readTab)
   const [month, setMonth] = useState(monthOf(taipeiToday()))
+  const [account, setAccount] = useState<null | 'menu' | 'offer'>(() => (takeOfferPasskey() ? 'offer' : null))
 
   useEffect(() => {
     const onHash = () => setTabState(readTab())
@@ -77,11 +80,9 @@ function Shell() {
         <button
           type="button"
           className="who"
-          onClick={() => {
-            if (window.confirm(`目前登入：${me || '—'}\n要登出嗎？`)) void supabase.auth.signOut()
-          }}
+          onClick={() => setAccount('menu')}
         >
-          {me ? `${me} · 登出` : '登出'}
+          {me || '帳號'}
         </button>
       </header>
 
@@ -118,6 +119,8 @@ function Shell() {
           {tab === 'stats' && <StatsPage month={month} setMonth={setMonth} goFillDays={() => setTab('sales')} />}
         </main>
       )}
+
+      {account && <AccountSheet me={me} offer={account === 'offer'} onClose={() => setAccount(null)} />}
 
       <div className="tabbar">
         <nav aria-label="主選單">

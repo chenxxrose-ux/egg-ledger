@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../data/supabase'
 import { ErrorNote, useSubmit } from '../../ui/kit'
 import { AppError } from '../data/errors'
+import { markOfferPasskey, passkeySupported, signInWithFaceId } from './passkey'
 
 export function Login() {
   const [email, setEmail] = useState(() => {
@@ -13,6 +14,7 @@ export function Login() {
   })
   const [password, setPassword] = useState('')
   const { busy, error, submit } = useSubmit()
+  const faceId = useSubmit()
 
   async function login() {
     await submit(async () => {
@@ -21,6 +23,7 @@ export function Login() {
         if (/invalid login credentials/i.test(err.message)) throw new AppError('帳號或密碼不正確', 'validation')
         throw err
       }
+      markOfferPasskey()
       try {
         localStorage.setItem('egg-ledger-email', email.trim())
       } catch {
@@ -33,6 +36,20 @@ export function Login() {
     <main className="login">
       <h1>叫蛋記帳</h1>
       <p className="note">阿寶、草莓各自用自己的帳號登入，看到的是同一本帳。</p>
+      {passkeySupported() && (
+        <>
+          <button
+            type="button"
+            className="btn primary block"
+            disabled={faceId.busy || busy}
+            onClick={() => void faceId.submit(async () => void (await signInWithFaceId()))}
+          >
+            {faceId.busy ? '登入中…' : '用 Face ID 登入'}
+          </button>
+          <ErrorNote error={faceId.error} />
+          <p className="note" style={{ textAlign: 'center' }}>或用密碼登入</p>
+        </>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -63,7 +80,7 @@ export function Login() {
           />
         </label>
         <ErrorNote error={error} />
-        <button className="btn primary block" type="submit" disabled={busy || !email || !password}>
+        <button className={`btn ${passkeySupported() ? 'secondary' : 'primary'} block`} type="submit" disabled={busy || !email || !password}>
           {busy ? '登入中…' : '登入'}
         </button>
       </form>

@@ -22,8 +22,10 @@ async function login(browser: Browser, email: string) {
   await page.goto('/')
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('密碼').fill('test-password')
-  await page.getByRole('button', { name: '登入' }).click()
+  await page.getByRole('button', { name: '登入', exact: true }).click()
   await expect(page.getByRole('heading', { name: '叫蛋紀錄' })).toBeVisible()
+  // 密碼登入後詢問一次要不要設定 Face ID
+  await page.getByRole('dialog', { name: '下次用 Face ID 登入？' }).getByRole('button', { name: '以後再說' }).click()
   return { ctx, page }
 }
 
@@ -56,13 +58,35 @@ test.afterAll(async () => {
   await berryCtx?.close()
 })
 
+test('Face ID 登入選項：登入頁有按鈕，詢問只出現一次，帳號選單可設定與登出', async ({ browser }) => {
+  const ctx = await browser.newContext()
+  const page = await ctx.newPage()
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '用 Face ID 登入' })).toBeVisible()
+  await page.getByLabel('Email').fill('bao@test.local')
+  await page.getByLabel('密碼').fill('test-password')
+  await page.getByRole('button', { name: '登入', exact: true }).click()
+  const offer = page.getByRole('dialog', { name: '下次用 Face ID 登入？' })
+  await expect(offer).toBeVisible()
+  await offer.getByRole('button', { name: '以後再說' }).click()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: '叫蛋紀錄' })).toBeVisible()
+  await expect(offer).toHaveCount(0)
+  await page.getByRole('banner').getByRole('button').click()
+  const menu = page.getByRole('dialog', { name: /目前登入/ })
+  await expect(menu.getByRole('button', { name: '設定 Face ID 登入' })).toBeVisible()
+  await menu.getByRole('button', { name: '登出' }).click()
+  await expect(page.getByRole('button', { name: '用 Face ID 登入' })).toBeVisible()
+  await ctx.close()
+})
+
 test('登入錯誤密碼顯示錯誤', async ({ browser }) => {
   const ctx = await browser.newContext()
   const page = await ctx.newPage()
   await page.goto('/')
   await page.getByLabel('Email').fill('bao@test.local')
   await page.getByLabel('密碼').fill('wrong')
-  await page.getByRole('button', { name: '登入' }).click()
+  await page.getByRole('button', { name: '登入', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('帳號或密碼不正確')
   await ctx.close()
 })
