@@ -443,6 +443,29 @@ test('修改紀錄：操作人取自登入帳號、台灣時間', async () => {
   expect(actors.map((a) => a.actor_name).sort()).toEqual(['草莓', '阿寶'].sort())
 })
 
+test('修改紀錄：首頁只顯示近 7 天，更早的在後台', async () => {
+  await sql(
+    `insert into public.audit_log (ledger_id, at, actor_name, action, entity, after)
+     select id, now() - interval '10 days', '草莓', 'create', 'egg_orders', '{"delivery_on":"2026-01-05","boxes":9,"ordered_by":null,"price_per_box":null}'::jsonb
+     from public.ledgers limit 1`,
+  )
+  await berry.reload()
+  const audit = berry.locator('section[aria-labelledby="audit-h"]')
+  await expect(audit).toContainText('近 7 天')
+  await expect(audit).toContainText('阿寶')
+  await expect(audit).not.toContainText('送 9 箱')
+  await audit.getByRole('button', { name: '查看全部修改紀錄' }).click()
+  const sheet = berry.getByRole('dialog', { name: '全部修改紀錄' })
+  await expect(sheet).toContainText('送 9 箱')
+  await sheet.getByRole('button', { name: '關閉' }).click()
+
+  // 右上角名字的選單也能進後台
+  await berry.getByRole('banner').getByRole('button').click()
+  await berry.getByRole('dialog', { name: /目前登入/ }).getByRole('button', { name: '後台：全部修改紀錄' }).click()
+  await expect(berry.getByRole('dialog', { name: '全部修改紀錄' })).toContainText('送 9 箱')
+  await berry.getByRole('dialog', { name: '全部修改紀錄' }).getByRole('button', { name: '關閉' }).click()
+})
+
 test('手機版面：不橫向捲動、按鈕與點擊區夠大、輸入字 16px', async () => {
   const page = bao
   await page.getByRole('navigation').getByRole('button', { name: '叫蛋', exact: true }).click()

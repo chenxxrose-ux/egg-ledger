@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../data/supabase'
 import { ErrorNote, Sheet, useSubmit, useToast } from '../../ui/kit'
 import { deviceHasPasskey, passkeySupported, registerFaceId } from './passkey'
+import { AuditArchive } from '../orders/History'
 
 /** 右上角名字：設定 Face ID 登入、登出。offer = 剛用密碼登入時主動詢問一次 */
 export function AccountSheet({ me, offer = false, onClose }: { me: string; offer?: boolean; onClose: () => void }) {
@@ -9,6 +10,7 @@ export function AccountSheet({ me, offer = false, onClose }: { me: string; offer
   const { busy, error, submit } = useSubmit()
   const [hasPasskey, setHasPasskey] = useState(deviceHasPasskey)
   const supported = passkeySupported()
+  const [archive, setArchive] = useState(false)
 
   async function setup() {
     await submit(async () => {
@@ -37,6 +39,8 @@ export function AccountSheet({ me, offer = false, onClose }: { me: string; offer
     )
   }
 
+  if (archive) return <AuditArchive onClose={onClose} />
+
   return (
     <Sheet title={`目前登入：${me || '—'}`} onClose={onClose} dialog>
       {supported &&
@@ -51,6 +55,9 @@ export function AccountSheet({ me, offer = false, onClose }: { me: string; offer
           </>
         ))}
       <ErrorNote error={error} />
+      <button type="button" className="btn secondary block" style={{ marginTop: 12 }} onClick={() => setArchive(true)}>
+        後台：全部修改紀錄
+      </button>
       <div className="row-btns">
         <button type="button" className="btn secondary" onClick={onClose} disabled={busy}>
           取消

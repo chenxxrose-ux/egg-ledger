@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Choice, ErrorNote, Sheet, useSubmit, useToast } from '../../ui/kit'
 import { useLedger } from '../data/store'
-import { formatDay, formatTaipeiTime } from '../../lib/dates'
+import { addDays, formatDay, formatTaipeiClock, formatTaipeiTime, taipeiDateOf } from '../../lib/dates'
 import { formatMoney, parseAmount } from '../../lib/money'
 import { describeAudit } from '../../lib/audit'
 import type { Allocation, Payment } from '../../lib/types'
@@ -148,21 +148,24 @@ function PaymentEditor({ payment, onClose }: { payment: Payment; onClose: () => 
 }
 
 /** 修改紀錄：誰、何時（台灣時間）、改了什麼。只能看，不能刪。 */
+/** 首頁只放近七天（含今天）的修改紀錄，更早的在後台 */
+export const AUDIT_RECENT_DAYS = 7
+
 export function AuditList() {
-  const { data, today, actions } = useLedger()
-  const [showAll, setShowAll] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const rows = showAll ? data.audit : data.audit.slice(0, 8)
+  const { data, today } = useLedger()
+  const [archive, setArchive] = useState(false)
+  const since = addDays(today, -(AUDIT_RECENT_DAYS - 1))
+  const recent = data.audit.filter((e) => taipeiDateOf(e.at) >= since)
   return (
     <section aria-labelledby="audit-h">
       <h2 className="section-title" id="audit-h">
-        修改紀錄
+        修改紀錄（近 7 天）
       </h2>
-      {data.audit.length === 0 ? (
-        <p className="note">還沒有任何紀錄。</p>
+      {recent.length === 0 ? (
+        <p className="note">近 7 天沒有修改。</p>
       ) : (
         <ul className="history">
-          {rows.map((e) => (
+          {recent.map((e) => (
             <li key={e.id}>
               <div className="when">
                 {formatTaipeiTime(e.at)} · {e.actor_name}
@@ -172,13 +175,59 @@ export function AuditList() {
           ))}
         </ul>
       )}
-      {((!showAll && (data.audit.length > 8 || data.auditHasMore)) || (showAll && data.auditHasMore)) && (
+      <button type="button" className="btn secondary block" style={{ marginTop: 12 }} onClick={() => setArchive(true)}>
+        查看全部修改紀錄
+      </button>
+      {archive && <AuditArchive onClose={() => setArchive(false)} />}
+    </section>
+  )
+}
+
+/** 後台：全部修改紀錄，依日期分組，往前載入 */
+export function AuditArchive({ onClose }: { onClose: () => void }) {
+  const { data, today, actions } = useLedger()
+  const [loading, setLoading] = useState(false)
+  const groups = useMemo(() => {
+    const m = new Map<string, typeof data.audit>()
+    for (const e of data.audit) {
+      const d = taipeiDateOf(e.at)
+      m.set(d, [...(m.get(d) ?? []), e])
+    }
+    return [...m.entries()]
+  }, [data.audit])
+
+  return (
+    <Sheet title="全部修改紀錄" onClose={onClose}>
+      <p className="note">每一次新增、修改、付款、作廢都會留下一筆，不能刪除。首頁只顯示近 7 天。</p>
+      {groups.length === 0 ? (
+        <p className="note">還沒有任何紀錄。</p>
+      ) : (
+        groups.map(([d, entries]) => (
+          <section key={d} className="archive-day" aria-label={formatDay(d, today)}>
+            <h3>
+              {formatDay(d, today)}
+              <span>{entries.length} 筆</span>
+            </h3>
+            <ul className="history">
+              {entries.map((e) => (
+                <li key={e.id}>
+                  <div className="when">
+                    {formatTaipeiClock(e.at)} · {e.actor_name}
+                  </div>
+                  <div>{describeAudit(e, data.members, today)}</div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+      {data.auditHasMore && (
         <button
           type="button"
-          className="link-btn"
+          className="btn secondary block"
+          style={{ marginTop: 12 }}
           disabled={loading}
           onClick={async () => {
-            if (!showAll) return setShowAll(true)
             setLoading(true)
             try {
               await actions.loadMoreAudit()
@@ -187,9 +236,9 @@ export function AuditList() {
             }
           }}
         >
-          {!showAll ? '顯示更多' : loading ? '載入中…' : '載入更早的紀錄'}
+          {loading ? '載入中…' : '載入更早的紀錄'}
         </button>
       )}
-    </section>
+    </Sheet>
   )
 }
