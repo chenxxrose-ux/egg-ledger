@@ -144,6 +144,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .history { list-style: none; margin: 0; padding: 0; }
 .history li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .history .when { color: var(--muted); font-size: 13px; }
+.archive-day h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 2px; font-size: 15px; }
+.archive-day h3 span { font-size: 13px; font-weight: 400; color: var(--muted); }
 .history .void { text-decoration: line-through; color: var(--muted); }
 .history button.item { width: 100%; text-align: left; background: none; border: 0; padding: 0; min-height: var(--tap); }
 

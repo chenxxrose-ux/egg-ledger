@@ -12,6 +12,11 @@ export function taipeiToday(now: Date = new Date()): string {
   return parts // en-CA 格式即 YYYY-MM-DD
 }
 
+/** 時間戳記在台灣是哪一天（YYYY-MM-DD） */
+export function taipeiDateOf(iso: string): string {
+  return taipeiToday(new Date(iso))
+}
+
 export function parseYmd(s: string): { y: number; m: number; d: number } {
   const [y, m, d] = s.split('-').map(Number)
   return { y, m, d }
@@ -72,4 +77,9 @@ export function formatTaipeiTime(iso: string): string {
   })
   const p = Object.fromEntries(f.formatToParts(new Date(iso)).map((x) => [x.type, x.value]))
   return `${p.year}/${p.month}/${p.day} ${p.hour === '24' ? '00' : p.hour}:${p.minute}`
+}
+
+/** 只取時:分（台灣時間），日期另外顯示時用 */
+export function formatTaipeiClock(iso: string): string {
+  return new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso))
 }
